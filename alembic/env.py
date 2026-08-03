@@ -4,6 +4,7 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import settings
 from app.db.base import Base
 from app.models.user import User
+from app.models.source import Source
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
