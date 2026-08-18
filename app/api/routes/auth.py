@@ -1,11 +1,9 @@
 from datetime import datetime, timedelta, timezone
-
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-
-from app.api.deps import get_db
+from app.api.deps import get_current_user, get_db, get_session_token
 from app.core.config import settings
 from app.core.security import (
     generate_session_token,
@@ -32,25 +30,15 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> User:
     db.refresh(user)
     return user
 
-
 @router.post("/login", response_model=UserOut)
-def login(
-    payload: LoginRequest,
-    response: Response,
-    db: Session = Depends(get_db),
-) -> User:
+def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)) -> User:
     user = db.execute(
         select(User).where(User.email == payload.email)
     ).scalar_one_or_none()
 
     if user is None or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-        )
-
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="incorrect email or password")
     token = generate_session_token()
-
     db.add(
         UserSession(
             session_id=hash_session_token(token),
@@ -60,7 +48,6 @@ def login(
         )
     )
     db.commit()
-
     response.set_cookie(
         key=settings.session_cookie_name,
         value=token,
@@ -70,6 +57,24 @@ def login(
         max_age=settings.session_ttl_days * 24 * 60 * 60,
         path="/",
     )
-
     return user
 
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    response: Response,
+    token: str = Depends(get_session_token),
+    db: Session = Depends(get_db),
+) -> None:
+    db.execute(delete(UserSession).where(UserSession.session_id == hash_session_token(token)))
+    db.commit()
+    response.delete_cookie(
+        key=settings.session_cookie_name,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        path="/",
+    )
+
+@router.get("/me", response_model=UserOut)
+def me(user: User = Depends(get_current_user)) -> User:
+    return user
