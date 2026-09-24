@@ -1,7 +1,14 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.api.routes import auth
+from app.core.bootstrap import ensure_bootstrap_admin
 
-app = FastAPI(title = "PulseBoard")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    ensure_bootstrap_admin()
+    yield
+
+app = FastAPI(title = "PulseBoard", lifespan=lifespan)
 
 app.include_router(auth.router)
 
