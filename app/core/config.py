@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import EmailStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     cookie_secure: bool = Field(
         default=False,
         validation_alias="COOKIE_SECURE",
+    )
+    bootstrap_admin_email: EmailStr | None = Field(
+        default=None,
+        validation_alias="BOOTSTRAP_ADMIN_EMAIL",
+    )
+    bootstrap_admin_password: str | None = Field(
+        default=None,
+        validation_alias="BOOTSTRAP_ADMIN_PASSWORD",
     )
 
 settings = Settings()
