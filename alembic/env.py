@@ -6,6 +6,7 @@ from app.db.base import Base
 from app.models.user import User
 from app.models.source import Source
 from app.models.sessions import UserSession
+from app.models.metric import Metric
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
