@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from app.api.routes import auth, sources
+from app.api.routes import auth, sources, metrics
 from app.core.bootstrap import ensure_bootstrap_admin
 
 @asynccontextmanager
@@ -12,6 +12,7 @@ app = FastAPI(title = "PulseBoard", lifespan=lifespan)
 
 app.include_router(auth.router)
 app.include_router(sources.router)
+app.include_router(metrics.router)
 
 @app.get("/health")
 def health_check():
