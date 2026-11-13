@@ -13,6 +13,24 @@ docker compose up -d
 uv run pytest
 ```
 
+## API: reading metrics
+
+All three need a logged-in user (admin or viewer). `source_id` and `metric`
+are always required.
+
+| Route | Extra params | Returns |
+|-------|--------------|---------|
+| `GET /metrics/latest` | none | the newest point |
+| `GET /metrics` | `range` or `start` + `end` | every point in the window, oldest first |
+| `GET /metrics/aggregate` | `interval`, and `range` or `start` + `end` | avg/min/max/count per bucket |
+
+`range` is one of `15m`, `1h`, `24h`, `7d` and ends now. For a custom window,
+pass `start` and `end` with a timezone instead. `start` is included, `end` is
+not. `interval` is one of `1m`, `5m`, `15m`, `1h`, `1d`.
+
+Sending the same `event_id` twice is safe. `POST /metrics` skips the
+duplicate and leaves it out of `accepted`.
+
 ## Schema: why the metrics index is `(source_id, metric, event_time)`
 
 Every dashboard query asks the same shape of question:
