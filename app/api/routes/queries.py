@@ -38,3 +38,28 @@ def latest_value(
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No data for this metric")
     return MetricPoint(event_time=row.event_time, value=row.value)
+
+
+@router.get("", response_model=list[MetricPoint])
+def raw_range(
+    source_id: int,
+    metric: str,
+    range_: RangeName | None = Query(default=None, alias="range"),
+    start: datetime | None = None,
+    end: datetime | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    ensure_source_exists(db, source_id)
+    start, end = resolve_range(range_, start, end)
+    rows = db.execute(
+        select(Metric.event_time, Metric.value)
+        .where(
+            Metric.source_id == source_id,
+            Metric.metric == metric,
+            Metric.event_time >= start,
+            Metric.event_time < end,
+        )
+        .order_by(Metric.event_time)
+    ).all()
+    return [MetricPoint(event_time=r.event_time, value=r.value) for r in rows]
