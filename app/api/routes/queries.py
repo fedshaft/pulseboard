@@ -63,3 +63,40 @@ def raw_range(
         .order_by(Metric.event_time)
     ).all()
     return [MetricPoint(event_time=r.event_time, value=r.value) for r in rows]
+
+
+@router.get("/aggregate", response_model=list[MetricBucket])
+def aggregated_range(
+    source_id: int,
+    metric: str,
+    interval: IntervalName,
+    range_: RangeName | None = Query(default=None, alias="range"),
+    start: datetime | None = None,
+    end: datetime | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    ensure_source_exists(db, source_id)
+    start, end = resolve_range(range_, start, end)
+    bucket = func.date_bin(INTERVALS[interval], Metric.event_time, BUCKET_ORIGIN).label("bucket_start")
+    rows = db.execute(
+        select(
+            bucket,
+            func.avg(Metric.value).label("avg"),
+            func.min(Metric.value).label("min"),
+            func.max(Metric.value).label("max"),
+            func.count().label("count"),
+        )
+        .where(
+            Metric.source_id == source_id,
+            Metric.metric == metric,
+            Metric.event_time >= start,
+            Metric.event_time < end,
+        )
+        .group_by(bucket)
+        .order_by(bucket)
+    ).all()
+    return [
+        MetricBucket(bucket_start=r.bucket_start, avg=r.avg, min=r.min, max=r.max, count=r.count)
+        for r in rows
+    ]
